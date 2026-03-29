@@ -1,30 +1,97 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ENGO 551 - IOT Geoweb App</title>
+        <title>My IoT Geoweb App</title>
         
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script> 
-        
+
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px auto;
+                max-width: 800px;
+                background-color: #f9f9f9;
+            }
+            .panel {
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+            }
+            .form-group {
+                margin-bottom: 10px;
+            }
+            label {
+                display: inline-block;
+                width: 100px;
+                font-weight: bold;
+            }
+            input {
+                padding: 5px;
+                width: 200px;
+            }
+            button {
+                padding: 8px 15px;
+                margin-right: 10px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            #btn-start { background-color: #4CAF50; color: white; }
+            #btn-end { background-color: #f44336; color: white; }
+            #btn-share { background-color: #008CBA; color: white; width: 100%; margin-top: 10px; padding: 12px;}
+            #btn-share:disabled { background-color: #cccccc; cursor: not-allowed; }
+            
+            /* The Map Container */
+            #map {
+                height: 400px;
+                width: 100%;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            #status-message {
+                margin-top: 10px;
+                font-style: italic;
+                color: #555;
+            }
+        </style>
     </head>
     <body>
-        <h2>IOT Geoweb Application</h2>
+
+        <h2>IoT Geoweb Tracker</h2>
+
         <div class="panel">
             <div class="form-group">
-                <label for="hostInput">MQTT Host</label>
+                <label for="hostInput">MQTT Host:</label>
                 <input type="text" id="hostInput" value="test.mosquitto.org">
             </div>
             <div class="form-group">
                 <label for="portInput">Port:</label>
                 <input type="number" id="portInput" value="8080">
             </div>
-
+            
             <div class="form-group">
                 <button id="btn-start">Start Connection</button>
                 <button id="btn-end" disabled>End Connection</button>
             </div>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <div class="form-group">
+                    <label for="customTopicInput">Any Topic:</label>
+                    <input type="text" id="customTopicInput" placeholder="test/topic">
+                </div>
+                <div class="form-group">
+                    <label for="customMessageInput">Message:</label>
+                    <input type="text" id="customMessageInput" placeholder="Hello World">
+                </div>
+                <button id="btn-publish-custom" disabled style="background-color: #ff9800; color: white;">Publish Custom Message</button>
+            </div>
+
             <div id="status-message">Status: Disconnected</div>
 
             <button id="btn-share" disabled>Share My Status</button>
@@ -33,19 +100,21 @@
         <div id="map"></div>
 
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
         <script>
-            // initalizing map
-            const map = L.map('map').setView([51.0447, -114.0719], 10)
-            // Adding the OpenStreetMap tiles
+            // initialize the map - Centered on Calgary
+            const map = L.map('map').setView([51.0447, -114.0719], 10);
+            
+            // add OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
 
-            let userMarker; // variable for user marker
+            let userMarker; // variable to hold the users marker
 
-            // function to define the color of the marker based on temp
-            function getTemperatureColor(temp){
+            // Function to determine marker color based on temperature
+            function getTemperatureColor(temp) {
                 if (temp >= -40 && temp < 10) {
                     return 'blue';
                 } else if (temp >= 10 && temp < 30) {
@@ -53,17 +122,17 @@
                 } else if (temp >= 30 && temp <= 60) {
                     return 'red';
                 } else {
-                    return 'gray'; // option if it doesn't fit into set bins
+                    return 'gray'; // backup color
                 }
             }
 
-            // function to update or create the map marker
-            function updateMarker(lab, long, temp){
-                const color = getTemperatureColor(temp);
-
-                // create marker if it doesn't exist
-                if(!userMarker){
-                    userMarker = L.circleMarker([lat, long],{
+            // Function to update or create the map marker
+            function updateMapMarker(lat, lng, temperature) {
+                const color = getTemperatureColor(temperature);
+                
+                // if the marker doesn't exist yet, create it
+                if (!userMarker) {
+                    userMarker = L.circleMarker([lat, lng], {
                         radius: 12,
                         fillColor: color,
                         color: '#000',
@@ -71,23 +140,217 @@
                         opacity: 1,
                         fillOpacity: 0.8
                     }).addTo(map);
-                }
-                else{
-                    // If marker does exist
-                    userMarker.setLatLng([lat,long]);
+                } else {
+                    // if it does exist update it
+                    userMarker.setLatLng([lat, lng]);
                     userMarker.setStyle({ fillColor: color });
                 }
-                userMarker.bindPopup(`<b>Current Temperature:</b> ${temp}°C`).openPopup();
-                map.panTo([lat,long])
+
+                userMarker.bindPopup(`<b>Current Temperature:</b> ${temperature}°C`).openPopup();
+                
+                // pan the map to the new location
+                map.panTo([lat, lng]);
             }
 
+            // MQTT and app logic
+            const hostInput = document.getElementById('hostInput');
+            const portInput = document.getElementById('portInput');
+            const startBtn = document.getElementById('btn-start');
+            const endBtn = document.getElementById('btn-end');
+            const shareBtn = document.getElementById('btn-share');
+            const statusMessage = document.getElementById('status-message');
+            const customTopicInput = document.getElementById('customTopicInput');
+            const customMessageInput = document.getElementById('customMessageInput');
+            const customPublishBtn = document.getElementById('btn-publish-custom');
 
+            let mqttClient;
+            let isIntentionalDisconnect = false; 
 
+            startBtn.addEventListener('click', () => {
+                isIntentionalDisconnect = false;
+                connectToBroker();
+            });
 
+            endBtn.addEventListener('click', () => {
+                isIntentionalDisconnect = true; // prevents auto-reconnect from firing
+                if (mqttClient) {
+                    mqttClient.disconnect();
+                }
+                updateUIOnDisconnect();
+            });
+
+            shareBtn.addEventListener('click', () => {
+                // checking if the browser supports Geolocation
+                if (!navigator.geolocation) {
+                    alert("Geolocation is not supported by your browser.");
+                    return;
+                }
+
+                statusMessage.innerText = "Status: Fetching location...";
+
+                // getting the current position
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+
+                        // generate a random temperature between -40 and 60
+                        const randomTemp = Math.floor(Math.random() * 101) - 40;
+
+                        // construct the GeoJSON object
+                        const geoJSONPayload = {
+                            type: "Feature",
+                            geometry: {
+                                type: "Point",
+                                coordinates: [lng, lat]
+                            },
+                            properties: {
+                                temperature: randomTemp
+                            }
+                        };
+
+                        // convert the JSON object to a string for transmission
+                        const payloadString = JSON.stringify(geoJSONPayload);
+
+                        // defining the MQTT topic 
+                        const topic = "ENGO_551/Kaitlyn_Bull/my_temperature";
+
+                        // create the MQTT message and publish it
+                        const message = new Paho.MQTT.Message(payloadString);
+                        message.destinationName = topic;
+                        mqttClient.send(message);
+
+                        console.log("Published to " + topic + ":", payloadString);
+                        statusMessage.innerText = "Status: Location Shared!";
+                    },
+                    (error) => {
+                        console.error("Error getting location: ", error);
+                        statusMessage.innerText = "Status: Location error.";
+                        alert("Unable to retrieve your location. Make sure location permissions are allowed in your browser.");
+                    },
+                    {
+                        enableHighAccuracy: true // tries to use GPS for better mobile accuracy
+                    }
+                );
+            });
+
+            customPublishBtn.addEventListener('click', () => {
+                const customTopic = customTopicInput.value;
+                const customPayload = customMessageInput.value;
+
+                if (customTopic.trim() === "") {
+                    alert("Please enter a topic first.");
+                    return;
+                }
+
+                // create and send the custom MQTT message
+                const message = new Paho.MQTT.Message(customPayload);
+                message.destinationName = customTopic;
+                mqttClient.send(message);
+
+                console.log(`Published custom message to ${customTopic}: ${customPayload}`);
+                statusMessage.innerText = `Status: Sent message to ${customTopic}`;
+            });
+
+            //  MQTT Connection Functions 
+            function connectToBroker() {
+                const host = hostInput.value;
+                const port = Number(portInput.value);
+                
+                // generating a random client ID so multiple tabs/devices don't conflict
+                const clientId = "client_" + Math.random().toString(36).substring(7);
+
+                statusMessage.innerText = "Status: Connecting...";
+                
+                // lock inputs per requirements
+                hostInput.disabled = true;
+                portInput.disabled = true;
+                startBtn.disabled = true;
+                endBtn.disabled = false;
+
+                // initialize the Paho client
+                mqttClient = new Paho.MQTT.Client(host, port, clientId);
+                
+                // setting callback functions
+                mqttClient.onConnectionLost = onConnectionLost;
+                mqttClient.onMessageArrived = onMessageArrived;
+
+                // attempt to connect
+                mqttClient.connect({
+                    onSuccess: onConnect,
+                    onFailure: onConnectFailure
+                });
+            }
+
+            function onConnect() {
+                console.log("Connected to MQTT Broker");
+                statusMessage.innerText = "Status: Connected";
+                
+                // unlock the buttons now that connected
+                shareBtn.disabled = false; 
+                customPublishBtn.disabled = false;
+                
+                // subscribe to the topic so the map can receive updates
+                const topic = "ENGO_551/Kaitlyn_Bull/my_temperature";
+                mqttClient.subscribe(topic);
+                console.log("Successfully subscribed to: " + topic);
+            }
+
+            function onConnectFailure(responseObject) {
+                console.log("Connection failed: " + responseObject.errorMessage);
+                statusMessage.innerText = "Status: Connection Failed. Retrying in 3s...";
+                
+                // auto-reconnect requirement
+                if (!isIntentionalDisconnect) {
+                    setTimeout(connectToBroker, 3000);
+                }
+            }
+
+            function onConnectionLost(responseObject) {
+                if (responseObject.errorCode !== 0) {
+                    console.log("Connection lost: " + responseObject.errorMessage);
+                    shareBtn.disabled = true; 
+                    customPublishBtn.disabled = true;
+                    
+                    // auto-reconnect requirement
+                    if (!isIntentionalDisconnect) {
+                        statusMessage.innerText = "Status: Connection Lost. Reconnecting in 3s...";
+                        setTimeout(connectToBroker, 3000);
+                    }
+                }
+            }
+
+            function updateUIOnDisconnect() {
+                hostInput.disabled = false;
+                portInput.disabled = false;
+                startBtn.disabled = false;
+                endBtn.disabled = true;
+                shareBtn.disabled = true;
+                customPublishBtn.disabled = true;
+                statusMessage.innerText = "Status: Disconnected";
+                console.log("Disconnected intentionally.");
+            }
+
+            function onMessageArrived(message) {
+                console.log("Incoming MQTT message: " + message.payloadString);
+                
+                try {
+                    // searching the incoming text back into a usable JSON object
+                    const geoData = JSON.parse(message.payloadString);
+                    
+                    // extracting the data from the GeoJSON structure
+                    const lng = geoData.geometry.coordinates[0];
+                    const lat = geoData.geometry.coordinates[1];
+                    const temperature = geoData.properties.temperature;
+                    
+                    // updating the map
+                    updateMapMarker(lat, lng, temperature);
+                    
+                } catch (error) {
+                    console.error("Received a message, but it wasn't valid JSON: ", error);
+                }
+            }
+            
         </script>
-
-
-
-
     </body>
 </html>
