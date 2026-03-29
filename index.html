@@ -69,7 +69,7 @@
                 <label for="hostInput">MQTT Host:</label>
                 <input type="text" id="hostInput" value="test.mosquitto.org">
             </div>
-            <div class="form-group">
+            <div class="form-group"> 
                 <label for="portInput">Port:</label>
                 <input type="number" id="portInput" value="8081">
             </div>
@@ -125,6 +125,7 @@
                 }
             }
 
+            // Requirement 6
             // Function to update or create the map marker
             function updateMapMarker(lat, lng, temperature) {
                 const color = getTemperatureColor(temperature);
@@ -178,6 +179,7 @@
                 updateUIOnDisconnect();
             });
 
+            // Requirement 5
             shareBtn.addEventListener('click', () => {
                 // checking if the browser supports Geolocation
                 if (!navigator.geolocation) {
@@ -233,6 +235,7 @@
                 );
             });
 
+            // Reuirement 4
             customPublishBtn.addEventListener('click', () => {
                 const customTopic = customTopicInput.value;
                 const customPayload = customMessageInput.value;
@@ -306,13 +309,14 @@
                 }
             }
 
+            // Requirement 3 
             function onConnectionLost(responseObject) {
                 if (responseObject.errorCode !== 0) {
                     console.log("Connection lost: " + responseObject.errorMessage);
                     shareBtn.disabled = true; 
                     customPublishBtn.disabled = true;
                     
-                    // auto-reconnect requirement
+                    // auto-reconnect requirement (#3)
                     if (!isIntentionalDisconnect) {
                         statusMessage.innerText = "Status: Connection Lost. Reconnecting in 3s...";
                         setTimeout(connectToBroker, 3000);
