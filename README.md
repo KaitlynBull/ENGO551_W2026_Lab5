@@ -17,7 +17,7 @@ The application publishes and subscribes to the following topic:
 `ENGO_551/Kaitlyn_Bull/my_temperature`
 
 **Secure WebSockets (WSS)**
-Because this application is hosted on GitHub Pages (which enforces HTTPS), the connection to `test.mosquitto.org` has been intentionally configured to use **Port 8081** with SSL enabled (`useSSL: true`). This prevents the browser from blocking the connection due to Mixed Content security policies, ensuring the Geolocation API functions correctly on mobile devices.
+Because this application is hosted on GitHub Pages (which enforces HTTPS), the connection to `test.mosquitto.org` has been intentionally set to use **Port 8081** with SSL enabled (`useSSL: true`). This prevents the browser from blocking the connection and ensures that the Geolocation API functions correctly on mobile devices.
 
 **How to Test**
 1. Open the live GitHub Pages link on a smartphone or desktop browser (https://kaitlynbull.github.io/ENGO551_W2026_Lab5/).
