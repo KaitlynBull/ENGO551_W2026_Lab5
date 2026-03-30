@@ -112,7 +112,7 @@
 
             let userMarker; // variable to hold the users marker
 
-            // Function to determine marker color based on temperature
+            // Function to determine marker color based on temperature 
             function getTemperatureColor(temp) {
                 if (temp >= -40 && temp < 10) {
                     return 'blue';
@@ -179,7 +179,7 @@
                 updateUIOnDisconnect();
             });
 
-            // Requirement 5
+            // Requirement 5 
             shareBtn.addEventListener('click', () => {
                 // checking if the browser supports Geolocation
                 if (!navigator.geolocation) {
@@ -195,7 +195,7 @@
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
 
-                        // generate a random temperature between -40 and 60
+                        // generate a random temperature between -40 and 60 
                         const randomTemp = Math.floor(Math.random() * 101) - 40;
 
                         // construct the GeoJSON object
@@ -210,13 +210,13 @@
                             }
                         };
 
-                        // convert the JSON object to a string for transmission
+                        // convert the JSON object to a string for transmission 
                         const payloadString = JSON.stringify(geoJSONPayload);
 
-                        // defining the MQTT topic 
+                        // defining the MQTT topic -
                         const topic = "ENGO_551/Kaitlyn_Bull/my_temperature";
 
-                        // create the MQTT message and publish it
+                        // create the MQTT message and publish it 
                         const message = new Paho.MQTT.Message(payloadString);
                         message.destinationName = topic;
                         mqttClient.send(message);
@@ -293,7 +293,8 @@
                 shareBtn.disabled = false; 
                 customPublishBtn.disabled = false;
                 
-                // subscribe to the topic so the map can receive updates
+                // Requirement 6 
+                // subscribe to the topic so the map can receive updates 
                 const topic = "ENGO_551/Kaitlyn_Bull/my_temperature";
                 mqttClient.subscribe(topic);
                 console.log("Successfully subscribed to: " + topic);
@@ -335,6 +336,7 @@
                 console.log("Disconnected intentionally.");
             }
 
+            // function to update map based on incoming MQTT message 
             function onMessageArrived(message) {
                 console.log("Incoming MQTT message: " + message.payloadString);
                 
